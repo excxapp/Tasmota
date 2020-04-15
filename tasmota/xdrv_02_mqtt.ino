@@ -175,7 +175,7 @@ PubSubClient MqttClient(EspClient);
 
 void MqttInit(void)
 {
-#ifdef USE_MQTT_TLS
+#if defined(USE_MQTT_TLS) && MQTT_PORT != 1883
   tlsClient = new BearSSL::WiFiClientSecure_light(1024,1024);
 
 #ifdef USE_MQTT_AWS_IOT
@@ -185,13 +185,16 @@ void MqttInit(void)
                              0xFFFF /* all usages, don't care */, 0);
 #endif
 
-#ifdef USE_MQTT_TLS_CA_CERT
+#if defined(USE_MQTT_TLS_CA_CERT) && MQTT_PORT != 1883
 #ifdef USE_MQTT_AWS_IOT
   tlsClient->setTrustAnchor(&AmazonRootCA1_TA);
 #else
-  // tlsClient->setTrustAnchor(&GlobalSignTAs);
-  // tlsClient->setTrustAnchor(&LetsEncryptX3CrossSigned_TA);
-  tlsClient->setTrustAnchor(&GlobalSignTAs);
+    #if MQTT_PORT > 18883
+        tlsClient->setTrustAnchor(&LetsEncryptX3CrossSigned_TA);
+    #else
+        tlsClient->setTrustAnchor(&GlobalSignTAs);
+    #endif
+  
 #endif // USE_MQTT_AWS_IOT
 
 #endif // USE_MQTT_TLS_CA_CERT
@@ -624,7 +627,7 @@ void MqttReconnect(void)
   Response_P(S_OFFLINE);
 
   if (MqttClient.connected()) { MqttClient.disconnect(); }
-#ifdef USE_MQTT_TLS
+#if defined(USE_MQTT_TLS) && MQTT_PORT != 1883
   tlsClient->stop();
 #else
   EspClient = WiFiClient();               // Wifi Client reconnect issue 4497 (https://github.com/esp8266/Arduino/issues/4497)
@@ -645,7 +648,7 @@ void MqttReconnect(void)
   MqttClient.setServer(SettingsText(SET_MQTT_HOST), Settings.mqtt_port);
 
   uint32_t mqtt_connect_time = millis();
-#if defined(USE_MQTT_TLS) && !defined(USE_MQTT_TLS_CA_CERT)
+#if defined(USE_MQTT_TLS) && !defined(USE_MQTT_TLS_CA_CERT) && MQTT_PORT != 1883
   bool allow_all_fingerprints = false;
   bool learn_fingerprint1 = is_fingerprint_mono_value(Settings.mqtt_fingerprint[0], 0x00);
   bool learn_fingerprint2 = is_fingerprint_mono_value(Settings.mqtt_fingerprint[1], 0x00);
@@ -661,7 +664,7 @@ void MqttReconnect(void)
 #else
   if (MqttClient.connect(mqtt_client, mqtt_user, mqtt_pwd, stopic, 1, true, mqtt_data, MQTT_CLEAN_SESSION)) {
 #endif
-#ifdef USE_MQTT_TLS
+#if defined(USE_MQTT_TLS) && MQTT_PORT != 1883
     AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "TLS connected in %d ms, max ThunkStack used %d"),
       millis() - mqtt_connect_time, tlsClient->getMaxThunkStackUse());
     if (!tlsClient->getMFLNStatus()) {
