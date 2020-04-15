@@ -25,6 +25,7 @@
 #define USE_MQTT_TLS  
 #endif
 #define MQTT_PORT              1884
+#define USE_MQTT_TLS_CA_CERT 
 /*****************************************************************************************************\
  * USAGE:
  *   To modify the stock configuration without changing the my_user_config.h file:
