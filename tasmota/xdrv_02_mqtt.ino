@@ -173,31 +173,23 @@ PubSubClient MqttClient;
 PubSubClient MqttClient(EspClient);
 #endif
 AESLib aesLib;
-
-int loopcount = 0;
-
-char cleartext[256];
-char ciphertext[512];
-
-// AES Encryption Key
-byte aes_key[] = { 0x15, 0x2B, 0x7E, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-
-// General initialization vector (you must use your own IV's in production for full security!!!)
-byte aes_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-String encrypt(char * msg, byte iv[]) {  
-  int msgLen = strlen(msg);
-  char encrypted[2 * msgLen];
-  aesLib.encrypt64(msg, msgLen, encrypted, aes_key, iv);  
-  return String(encrypted);
-}
 void MqttInit(void)
 {
    
   uint16_t mqttport  = Settings.mqtt_port;
-  // workaround for incorrect B64 functionality on first run...
-  encrypt("HELLO WORLD!", aes_iv);
-  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "TLS connection error: %d %s"), mqttport, aesLib.gen_iv(aes_iv));
-  // workaround for incorrect B64 functionality on first run...
+ 
+   byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+    
+  // put your setup code here, to run once:
+  byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  aesLib.gen_iv(my_iv);
+
+  String msg = "i like dogs";
+  
+  String encMsg = aesLib.encrypt(msg, key, my_iv);
+
+  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "TLS connection error: %d"), mqttport);
+
   // AddLog_P2(LOG_LEVEL_INFO, S_LOG_MQTT, PSTR("init-start %d"), mqttport );
 #if defined(USE_MQTT_TLS)
   tlsClient = new BearSSL::WiFiClientSecure_light(1024,1024);
