@@ -24,7 +24,7 @@
 #ifndef USE_MQTT_TLS 
 #define USE_MQTT_TLS  
 #endif
-#define MQTT_PORT              8883
+#define MQTT_PORT              1884
 /*****************************************************************************************************\
  * USAGE:
  *   To modify the stock configuration without changing the my_user_config.h file:
