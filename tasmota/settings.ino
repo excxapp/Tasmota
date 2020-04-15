@@ -731,6 +731,7 @@ void SettingsDefaultSet2(void)
   Settings.flag3.use_wifi_scan = WIFI_SCAN_AT_RESTART;
   Settings.flag3.use_wifi_rescan = WIFI_SCAN_REGULARLY;
   Settings.wifi_output_power = 170;
+  Settings.param[P_ARP_GRATUITOUS] = WIFI_ARP_INTERVAL;
   ParseIp(&Settings.ip_address[0], WIFI_IP_ADDRESS);
   ParseIp(&Settings.ip_address[1], WIFI_GATEWAY);
   ParseIp(&Settings.ip_address[2], WIFI_SUBNETMASK);
@@ -1242,7 +1243,7 @@ void SettingsDelta(void)
       Settings.ex_serial_config = TS_SERIAL_8N1;
     }
     if (Settings.version < 0x07010204) {
-      if (Settings.flag3.ex_cors_enabled == 1) {
+      if (Settings.flag3.mqtt_buttons == 1) {
         strlcpy(Settings.ex_cors_domain, CORS_ENABLED_ALL, sizeof(Settings.ex_cors_domain));
       } else {
         Settings.ex_cors_domain[0] = 0;
@@ -1332,6 +1333,7 @@ void SettingsDelta(void)
     }
     if (Settings.version < 0x08020003) {
       SettingsUpdateText(SET_TEMPLATE_NAME, Settings.user_template_name);
+      Settings.zb_channel = 0;      // set channel to zero to force reinit of zigbee parameters
     }
 #endif  // ESP8266
 
