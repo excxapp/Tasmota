@@ -1,121 +1,73 @@
-/*
-    This file is part of the aeslib.
-    Copyright (C) 2012 Davy Landman (davy.landman@gmail.com) 
+#ifndef AESLib_h
+#define AESLib_h
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+#define __STDC_WANT_LIB_EXT1__ 1
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+#include "AES.h"
+#include "base64.h"
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-#ifndef AESLIB_H
-#define AESLIB_H
-#include <stdint.h>
-#ifdef __cplusplus
-extern "C"{
+#ifndef __AVR__
+#include <iomanip> // provides std::setfill and setw:: (only for intToHex debugging)
+#include <sstream>
+#include <cstdint>
+#include <iostream>
+#include <string>
 #endif
-// encrypt multiple blocks of 128bit data, data_len but be mod 16
-// key and iv are assumed to be both 128bit thus 16 uint8_t's
-void aes128_cbc_enc(const uint8_t* key, const uint8_t* iv, void* data, const uint16_t data_len);
 
-// encrypt multiple blocks of 128bit data, data_len but be mod 16
-// key and iv are assumed to be both 192bit thus 24 uint8_t's
-void aes192_cbc_enc(const uint8_t* key, const uint8_t* iv, void* data, const uint16_t data_len);
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-// encrypt single 128bit block. data is assumed to be 16 uint8_t's
-// key is assumed to be 128bit thus 16 uint8_t's
-void aes128_enc_single(const uint8_t* key, void* data);
+#ifndef __x86_64
+#include "Arduino.h"
+#define debug(format, ...) if (Serial) Serial.printf ( format, __VA_ARGS__)
 
-// encrypt multiple blocks of 128bit data, data_len but be mod 16
-// key is assumed to be 128bit thus 16 uint8_t's
-void aes128_enc_multiple(const uint8_t* key, void* data, const uint16_t data_len);
+#define dumpHex(arr, count) if (Serial) { for(int kkk =0;kkk< count;kkk++) \
+                                      Serial.printf ("%x " ,arr[kkk]); \
+                                      Serial.printf ("\n"); \
+                          }
 
-// encrypt single 128bit block. data is assumed to be 16 uint8_t's
-// key is assumed to be 256bit thus 32 uint8_t's
-void aes256_enc_single(const uint8_t* key, void* data);
-
-// encrypt multiple blocks of 128bit data, data_len but be mod 16
-// key is assumed to be 256bit thus 32 uint8_t's
-void aes256_enc_multiple(const uint8_t* key, void* data, const uint16_t data_len);
-
-typedef void* aes_context;
-
-// prepare an encrypted to use for encrypting multiple blocks lateron.
-// key and iv are assumed to be both 128bit thus 16 uint8_t's
-aes_context aes128_cbc_enc_start(const uint8_t* key, const void* iv);
-
-// prepare an encrypted to use for encrypting multiple blocks lateron.
-// key and iv are assumed to be both 192bit thus 24 uint8_t's
-aes_context aes192_cbc_enc_start(const uint8_t* key, const void* iv);
-
-// encrypt one or more blocks of 128bit data
-// data_len should be mod 16
-void aes128_cbc_enc_continue(const aes_context ctx, void* data, const uint16_t data_len);
-
-// encrypt one or more blocks of 128bit data
-// data_len should be mod 16
-void aes192_cbc_enc_continue(const aes_context ctx, void* data, const uint16_t data_len);
-
-// cleanup encryption context
-void aes128_cbc_enc_finish(const aes_context ctx);
-
-// cleanup encryption context
-void aes192_cbc_enc_finish(const aes_context ctx);
-
-// decrypt multiple blocks of 128bit data, data_len but be mod 16
-// key and iv are assumed to be both 128bit thus 16 uint8_t's
-void aes128_cbc_dec(const uint8_t* key, const uint8_t* iv, void* data, const uint16_t data_len);
-
-// decrypt multiple blocks of 128bit data, data_len but be mod 16
-// key and iv are assumed to be both 192bit thus 24 uint8_t's
-void aes192_cbc_dec(const uint8_t* key, const uint8_t* iv, void* data, const uint16_t data_len);
-
-// decrypt single 128bit block. data is assumed to be 16 uint8_t's
-// key is assumed to be 128bit thus 16 uint8_t's
-void aes128_dec_single(const uint8_t* key, void* data);
-
-// decrypt multiple blocks of 128bit data, data_len but be mod 16
-// key is assumed to be 128bit thus 16 uint8_t's
-void aes128_dec_multiple(const uint8_t* key, void* data, const uint16_t data_len);
-
-// decrypt single 128bit block. data is assumed to be 16 uint8_t's
-// key is assumed to be 256bit thus 32 uint8_t's
-void aes256_dec_single(const uint8_t* key, void* data);
-
-// decrypt multiple blocks of 128bit data, data_len but be mod 16
-// key is assumed to be 256bit thus 32 uint8_t's
-void aes256_dec_multiple(const uint8_t* key, void* data, const uint16_t data_len);
-
-// prepare an decrypter to use for decrypting multiple blocks lateron.
-// key and iv are assumed to be both 128bit thus 16 uint8_t's
-aes_context aes128_cbc_dec_start(const uint8_t* key, const void* iv);
-
-// prepare an decrypter to use for decrypting multiple blocks lateron.
-// key and iv are assumed to be both 192bit thus 24 uint8_t's
-aes_context aes192_cbc_dec_start(const uint8_t* key, const void* iv);
-
-// decrypt one or more blocks of 128bit data
-// data_len should be mod 16
-void aes128_cbc_dec_continue(const aes_context ctx, void* data, const uint16_t data_len);
-
-// decrypt one or more blocks of 128bit data
-// data_len should be mod 16
-void aes192_cbc_dec_continue(const aes_context ctx, void* data, const uint16_t data_len);
-
-// cleanup decryption context
-void aes128_cbc_dec_finish(const aes_context ctx);
-
-// cleanup decryption context
-void aes192_cbc_dec_finish(const aes_context ctx);
-
-#ifdef __cplusplus
-}
+#define dump(arr, count) if (Serial) { for(int kkk =0;kkk< count;kkk++) \
+                                      Serial.printf ("%s," ,arr[kkk]); \
+                                      Serial.printf ("\n"); \
+                          }
+//#define AES_DEBUG
 #endif
+
+class AESLib
+{
+  public:
+
+    void gen_iv(byte  *iv);
+
+    int get_cipher_length(int msg_len);
+    int get_cipher64_length(int msg_len);
+
+    void set_paddingmode(paddingMode mode);
+    paddingMode get_paddingmode();
+
+    uint16_t encrypt64(char * input, uint16_t input_length, char * output, byte key[],int bits, byte my_iv[]); // base64 encode, encrypt and base64 encode again; will deprecate
+    uint16_t encrypt(byte input[], uint16_t input_length, char * output, byte key[],int bits, byte my_iv[]); // base64 encode and encrypt; should encode on output only (if)
+
+    uint16_t decrypt64(char * input, uint16_t input_length, char * output, byte key[],int bits, byte my_iv[]); // decode, decrypt and decode
+    uint16_t decrypt(byte input[], uint16_t input_length, char * output, byte key[], int bits, byte my_iv[]); // decrypts and decodes (expects encoded)
+
+#ifndef __AVR__
+    std::string intToHex(uint8_t intValue);
 #endif
+
+#ifndef __x86_64
+    String decrypt(String msg, byte key[],int bits, byte my_iv[]) __attribute__((deprecated)); // decode, decrypt, decode and return as String
+    String encrypt(String msg, byte key[], int bits, byte my_iv[]) __attribute__((deprecated)); // encode, encrypt, encode and return as String
+#endif
+
+    uint8_t getrnd();
+
+  private:
+    void clean();
+    AES aes;
+};
+
+#endif // AESLib_h
