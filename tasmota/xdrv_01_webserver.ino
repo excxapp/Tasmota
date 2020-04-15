@@ -583,7 +583,7 @@ void StartWebserver(int type, IPAddress ipweb)
       WebServer->on("/lg", HandleLoggingConfiguration);
       WebServer->on("/tp", HandleTemplateConfiguration);
       WebServer->on("/co", HandleOtherConfiguration);
-      WebServer->on("/dl", HandleBackupConfiguration);
+      // WebServer->on("/dl", HandleBackupConfiguration);
       WebServer->on("/rs", HandleRestoreConfiguration);
       WebServer->on("/rt", HandleResetConfiguration);
       WebServer->on("/in", HandleInformation);
