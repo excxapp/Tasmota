@@ -175,7 +175,14 @@ PubSubClient MqttClient(EspClient);
 
 void MqttInit(void)
 {
-#if defined(USE_MQTT_TLS) && MQTT_PORT != 1883
+   
+  uint16_t mqttport  = Settings.mqtt_port;
+  uint8_t key[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+  char data[] = "0123456789012345"; //16 chars == 16 bytes
+  aes128_enc_single(key, data);
+  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "TLS connection error: %d %s"), mqttport, data);
+  // AddLog_P2(LOG_LEVEL_INFO, S_LOG_MQTT, PSTR("init-start %d"), mqttport );
+#if defined(USE_MQTT_TLS)
   tlsClient = new BearSSL::WiFiClientSecure_light(1024,1024);
 
 #ifdef USE_MQTT_AWS_IOT
@@ -185,15 +192,25 @@ void MqttInit(void)
                              0xFFFF /* all usages, don't care */, 0);
 #endif
 
-#if defined(USE_MQTT_TLS_CA_CERT) && MQTT_PORT != 1883
+#if defined(USE_MQTT_TLS_CA_CERT)
 #ifdef USE_MQTT_AWS_IOT
   tlsClient->setTrustAnchor(&AmazonRootCA1_TA);
 #else
-    #if MQTT_PORT > 18883
+    AddLog_P2(LOG_LEVEL_DEBUG, PSTR(D_LOG_MQTT D_UNSUBSCRIBE_FROM " %d"), mqttport);
+    if (mqttport > 18883){
+      AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "LetsEncryptX3CrossSigned_TA TLS connection error: %d"), mqttport);
         tlsClient->setTrustAnchor(&LetsEncryptX3CrossSigned_TA);
-    #else
+    }else{
+      AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "GlobalSignTAs TLS connection error: %d"), mqttport);
         tlsClient->setTrustAnchor(&GlobalSignTAs);
-    #endif
+    }
+    // #if mqttport > 18883
+    //    AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "LetsEncryptX3CrossSigned_TA TLS connection error: %d"), mqttport);
+    //     tlsClient->setTrustAnchor(&LetsEncryptX3CrossSigned_TA);
+    // #else
+    //   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "GlobalSignTAs TLS connection error: %d"), mqttport);
+    //     tlsClient->setTrustAnchor(&GlobalSignTAs);
+    // #endif
   
 #endif // USE_MQTT_AWS_IOT
 
@@ -627,7 +644,7 @@ void MqttReconnect(void)
   Response_P(S_OFFLINE);
 
   if (MqttClient.connected()) { MqttClient.disconnect(); }
-#if defined(USE_MQTT_TLS) && MQTT_PORT != 1883
+#if defined(USE_MQTT_TLS)
   tlsClient->stop();
 #else
   EspClient = WiFiClient();               // Wifi Client reconnect issue 4497 (https://github.com/esp8266/Arduino/issues/4497)
@@ -648,7 +665,7 @@ void MqttReconnect(void)
   MqttClient.setServer(SettingsText(SET_MQTT_HOST), Settings.mqtt_port);
 
   uint32_t mqtt_connect_time = millis();
-#if defined(USE_MQTT_TLS) && !defined(USE_MQTT_TLS_CA_CERT) && MQTT_PORT != 1883
+#if defined(USE_MQTT_TLS) && !defined(USE_MQTT_TLS_CA_CERT)
   bool allow_all_fingerprints = false;
   bool learn_fingerprint1 = is_fingerprint_mono_value(Settings.mqtt_fingerprint[0], 0x00);
   bool learn_fingerprint2 = is_fingerprint_mono_value(Settings.mqtt_fingerprint[1], 0x00);

@@ -21,12 +21,12 @@
 #ifndef SUPPORT_MQTT_EVENT
 #define SUPPORT_MQTT_EVENT
 #endif
-// #ifndef USE_MQTT_TLS 
-// #define USE_MQTT_TLS  
-// #endif
+#ifndef USE_MQTT_TLS 
+#define USE_MQTT_TLS  
+#endif
 #define MQTT_PORT              1884
-// #define USE_MQTT_TLS_CA_CERT 
-#define MQTT_FINGERPRINT2      "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF"  // [MqttFingerprint2]
+#define USE_MQTT_TLS_CA_CERT 
+// #define MQTT_FINGERPRINT2      "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF"  // [MqttFingerprint2]
 
 /*****************************************************************************************************\
  * USAGE:

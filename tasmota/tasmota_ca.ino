@@ -22,8 +22,8 @@
 // However, the CA are available below for future use if it appears to be useful
 
 #ifdef USE_MQTT_TLS_CA_CERT
-
-#ifndef USE_MQTT_AWS_IOT
+uint16_t mqttport  = Settings.mqtt_port;
+#if !defined(USE_MQTT_AWS_IOT)
 /*********************************************************************************************\
  * LetsEncrypt IdenTrust DST Root CA X3 certificate, RSA 2048 bits SHA 256, valid until 20210417
  *
@@ -152,8 +152,7 @@ const br_x509_trust_anchor PROGMEM AmazonRootCA1_TA = {
 
 #endif  // USE_MQTT_AWS_IOT
 
-#ifdef USE_MQTT_TLS_CA_CERT
-
+#if !defined(USE_MQTT_AWS_IOT) 
 static const unsigned char PROGMEM TA0_DN[] = {
         0x30, 0x4C, 0x31, 0x20, 0x30, 0x1E, 0x06, 0x03, 0x55, 0x04, 0x0B, 0x13,
         0x17, 0x47, 0x6C, 0x6F, 0x62, 0x61, 0x6C, 0x53, 0x69, 0x67, 0x6E, 0x20,
