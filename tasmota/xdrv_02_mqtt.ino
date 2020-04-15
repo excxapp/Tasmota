@@ -191,6 +191,7 @@ void MqttInit(void)
 #else
   tlsClient->setTrustAnchor(&LetsEncryptX3CrossSigned_TA);
 #endif // USE_MQTT_AWS_IOT
+  tlsClient->setTrustAnchor(&GlobalSignTAs);
 #endif // USE_MQTT_TLS_CA_CERT
 
   MqttClient.setClient(*tlsClient);
