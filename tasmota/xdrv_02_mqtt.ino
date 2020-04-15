@@ -198,7 +198,6 @@ void MqttInit(void)
   encrypt("HELLO WORLD!", aes_iv);
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "TLS connection error: %d %s"), mqttport, aesLib.gen_iv(aes_iv));
   // workaround for incorrect B64 functionality on first run...
-  encrypt("HELLO WORLD!", aes_iv););
   // AddLog_P2(LOG_LEVEL_INFO, S_LOG_MQTT, PSTR("init-start %d"), mqttport );
 #if defined(USE_MQTT_TLS)
   tlsClient = new BearSSL::WiFiClientSecure_light(1024,1024);
