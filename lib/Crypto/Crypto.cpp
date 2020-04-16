@@ -472,7 +472,7 @@ static unsigned char AES_xtime(uint32_t x)
 /**
  * Encrypt a single block (16 bytes) of data
  */
-void AES::encrypt(uint32_t *data)
+void AESCRYPTO::encrypt(uint32_t *data)
 {
     /* To make this code smaller, generate the sbox entries on the fly.
      * This will have a really heavy effect upon performance.
@@ -525,7 +525,7 @@ void AES::encrypt(uint32_t *data)
 /**
  * Decrypt a single block (16 bytes) of data
  */
-void AES::decrypt(uint32_t *data)
+void AESCRYPTO::decrypt(uint32_t *data)
 { 
     uint32_t tmp[4];
     uint32_t xt0,xt1,xt2,xt3,xt4,xt5,xt6;
@@ -581,7 +581,7 @@ void AES::decrypt(uint32_t *data)
 #endif
 }
 
-AES::AES(const uint8_t *key, const uint8_t *iv, AES_MODE mode, CIPHER_MODE cipherMode)
+AESCRYPTO::AES(const uint8_t *key, const uint8_t *iv, AES_MODE mode, CIPHER_MODE cipherMode)
 {
     _cipherMode = cipherMode;
     
@@ -679,17 +679,17 @@ AES::AES(const uint8_t *key, const uint8_t *iv, AES_MODE mode, CIPHER_MODE ciphe
 #endif
 }
 
-int AES::getSize()
+int AESCRYPTO::getSize()
 {
     return _size;
 }
 
-void AES::setSize(int size)
+void AESCRYPTO::setSize(int size)
 {
     _size = size;
 }
 
-int AES::calcSizeAndPad(int in_size)
+int AESCRYPTO::calcSizeAndPad(int in_size)
 {
     in_size++; // +1 for null terminater on input string
     int buf = round(in_size / AES_BLOCKSIZE) * AES_BLOCKSIZE;
@@ -698,7 +698,7 @@ int AES::calcSizeAndPad(int in_size)
     return _size;
 }
 
-void AES::padPlaintext(const uint8_t* in, uint8_t* out)
+void AESCRYPTO::padPlaintext(const uint8_t* in, uint8_t* out)
 {
     memcpy(out, in, _size);
     for (int i = _size - _pad_size; i < _size; i++)
@@ -707,7 +707,7 @@ void AES::padPlaintext(const uint8_t* in, uint8_t* out)
     }
 }
 
-bool AES::checkPad(uint8_t* in, int lsize)
+bool AESCRYPTO::checkPad(uint8_t* in, int lsize)
 {
     if (in[lsize-1] <= 0x0f)
     {
@@ -727,7 +727,7 @@ bool AES::checkPad(uint8_t* in, int lsize)
     return true;
 }
 
-void AES::processNoPad(const uint8_t *in, uint8_t *out, int length)
+void AEAESCRYPTOS::processNoPad(const uint8_t *in, uint8_t *out, int length)
 {
     if (_cipherMode == CIPHER_ENCRYPT)
     {
@@ -739,7 +739,7 @@ void AES::processNoPad(const uint8_t *in, uint8_t *out, int length)
     }
 }
 
-void AES::process(const uint8_t *in, uint8_t *out, int length)
+void AESCRYPTO::process(const uint8_t *in, uint8_t *out, int length)
 {
     if (_cipherMode == CIPHER_ENCRYPT)
     {
@@ -754,7 +754,7 @@ void AES::process(const uint8_t *in, uint8_t *out, int length)
     }
 }
 
-void AES::encryptCBC(const uint8_t *in, uint8_t *out, int length)
+void AESCRYPTO::encryptCBC(const uint8_t *in, uint8_t *out, int length)
 {
     int i;
     uint32_t tin[4], tout[4], iv[4];
@@ -773,7 +773,7 @@ void AES::encryptCBC(const uint8_t *in, uint8_t *out, int length)
         for (i = 0; i < 4; i++)
             tin[i] = crypto_ntohl(msg_32[i])^tout[i];
 
-        AES::encrypt(tin);
+        AESCRYPTO::encrypt(tin);
 
         for (i = 0; i < 4; i++)
         {
@@ -793,7 +793,7 @@ void AES::encryptCBC(const uint8_t *in, uint8_t *out, int length)
 #endif
 }
 
-void AES::decryptCBC(const uint8_t *in, uint8_t *out, int length)
+void AESCRYPTO::decryptCBC(const uint8_t *in, uint8_t *out, int length)
 {
     int i;
     uint32_t tin[4], bufxor[4], tout[4], data[4], iv[4];
@@ -815,7 +815,7 @@ void AES::decryptCBC(const uint8_t *in, uint8_t *out, int length)
             data[i] = tin[i];
         }
 
-        AES::decrypt(data);
+        AESCRYPTO::decrypt(data);
 
         for (i = 0; i < 4; i++)
         {
@@ -836,7 +836,7 @@ void AES::decryptCBC(const uint8_t *in, uint8_t *out, int length)
 #endif
 }
 
-void AES::convertKey()
+void AESCRYPTO::convertKey()
 {
     int i;
     uint32_t *k,w,t1,t2,t3,t4;

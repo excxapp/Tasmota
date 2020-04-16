@@ -190,7 +190,7 @@ void encrypt(char* plain_text, char* output, int length)
 {
   byte enciphered[length];
   RNG::fill(iv, BLOCK_SIZE); 
-  AESCRYPTO aesEncryptor(key, iv, AESCRYPTO::AES_MODE_128, AESCRYPTO::CIPHER_ENCRYPT);
+  AESCRYPTO::aesEncryptor(key, iv, AESCRYPTO::AES_MODE_128, AESCRYPTO::CIPHER_ENCRYPT);
   aesEncryptor.process((uint8_t*)plain_text, enciphered, length);
   int encrypted_size = sizeof(enciphered);
   char encoded[encrypted_size];
@@ -205,7 +205,7 @@ void decrypt(char* enciphered, char* output, int length)
   decode_base64((unsigned char*)enciphered, (unsigned char*)decoded);
   bufferSize(enciphered, length);
   byte deciphered[length];
-  AESCRYPTO aesDecryptor(key, iv, AESCRYPTO::AES_MODE_128, AESCRYPTO::CIPHER_DECRYPT);
+  AESCRYPTO::aesDecryptor(key, iv, AESCRYPTO::AES_MODE_128, AESCRYPTO::CIPHER_DECRYPT);
   aesDecryptor.process((uint8_t*)decoded, deciphered, length);
   strcpy(output, (char*)deciphered);
 }
