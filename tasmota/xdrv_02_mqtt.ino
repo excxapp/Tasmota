@@ -1369,11 +1369,10 @@ void MqttSaveSettings(void)
     
     // Print the IV
     base64_encode( b64data, (char *)my_iv, N_BLOCK);
-    String strfff = msg;
+    String strfff = "---iv-"+ String(b64data);
     int b64len = base64_encode(b64data, (char *)msg.c_str(),msg.length());
-    strfff  =strfff +"---iv-"+ String(b64data);
-
     // For sanity check purpose
+    strfff = strfff+"----msg---"+String(b64data);
     //base64_decode( decoded , b64data , b64len );
     //Serial.println("Decoded: " + String(decoded));
     
