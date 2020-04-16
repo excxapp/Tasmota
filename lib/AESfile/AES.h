@@ -2,6 +2,7 @@
 #define __AES_H__
 
 #include "AES_config.h"
+#include "Base64.h"
 /*
  ---------------------------------------------------------------------------
  Copyright (c) 1998-2008, Brian Gladman, Worcester, UK. All rights reserved.
