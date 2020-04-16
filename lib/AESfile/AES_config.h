@@ -44,4 +44,5 @@
 #define KEY_SCHEDULE_BYTES ((N_MAX_ROUNDS + 1) * N_BLOCK)
 #define SUCCESS (0)
 #define FAILURE (-1)
+
 #endif
