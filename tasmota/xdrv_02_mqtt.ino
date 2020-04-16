@@ -180,8 +180,8 @@ void MqttInit(void)
  
   byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
   
-  byte my_iv[N_BLOCK] = { 8,7,4,"A","k",9,3,1,4,5,8,"k","p","k",4,"g"};
-  aesLib.gen_iv(my_iv);
+  byte my_iv[N_BLOCK] = { 8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
+  // aesLib.gen_iv(my_iv);
   String msg = "i like dogs";
   String encMsg = aesLib.encrypt(msg, key, my_iv);
 
