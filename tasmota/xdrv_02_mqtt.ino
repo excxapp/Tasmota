@@ -174,6 +174,41 @@ PubSubClient MqttClient(EspClient);
 #endif
 
 AES aes;
+#define BLOCK_SIZE 16
+
+uint8_t key[BLOCK_SIZE] = { 0x1C,0x3E,0x4B,0xAF,0x13,0x4A,0x89,0xC3,0xF3,0x87,0x4F,0xBC,0xD7,0xF3, 0x31, 0x31 };
+uint8_t iv[BLOCK_SIZE] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+void bufferSize(char* text, int &length)
+{
+  int i = strlen(text);
+  int buf = round(i / BLOCK_SIZE) * BLOCK_SIZE;
+  length = (buf <= i) ? buf + BLOCK_SIZE : length = buf;
+}
+    
+void encrypt(char* plain_text, char* output, int length)
+{
+  byte enciphered[length];
+  RNG::fill(iv, BLOCK_SIZE); 
+  AESCRYPTO aesEncryptor(key, iv, AESCRYPTO::AES_MODE_128, AESCRYPTO::CIPHER_ENCRYPT);
+  aesEncryptor.process((uint8_t*)plain_text, enciphered, length);
+  int encrypted_size = sizeof(enciphered);
+  char encoded[encrypted_size];
+  encode_base64(enciphered, encrypted_size, (unsigned char*)encoded);
+  strcpy(output, encoded);
+}
+
+void decrypt(char* enciphered, char* output, int length)
+{
+  length = length + 1; //re-adjust
+  char decoded[length];
+  decode_base64((unsigned char*)enciphered, (unsigned char*)decoded);
+  bufferSize(enciphered, length);
+  byte deciphered[length];
+  AESCRYPTO aesDecryptor(key, iv, AESCRYPTO::AES_MODE_128, AESCRYPTO::CIPHER_DECRYPT);
+  aesDecryptor.process((uint8_t*)decoded, deciphered, length);
+  strcpy(output, (char*)deciphered);
+}
 
 uint8_t getrnd() {
     uint8_t really_random = *(volatile uint8_t *)0x3FF20E44;
@@ -1349,8 +1384,8 @@ void MqttSaveSettings(void)
   WebGetArg("mu", tmp, sizeof(tmp));
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
-  // String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
-   String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
+  String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
+  //  String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
   char b64data[200];
     byte cipher[1000];
     byte iv [16] ;
@@ -1384,8 +1419,23 @@ void MqttSaveSettings(void)
     base64_encode(b64data, (char *)cipher, aes.get_size() );
     strfff  =strfff +"--coded--"+ String(b64data)   ; 
 
-  
-  
+    int length = 0;
+    bufferSize(plain_text, length);
+    char encrypted[length];
+    encrypt(plain_text, encrypted, length);
+
+    Serial.println("");
+    Serial.print("Encrypted: ");
+    Serial.println(encrypted); 
+    String encryptedv = st
+    strfff = strfff + "---encrypted--"+encryptedv
+
+    // decrypt
+    length = strlen(encrypted);
+    char decrypted[length];
+    decrypt(encrypted, decrypted, length);
+    String ddfd = decrypted
+    strfff = strfff + "---encrypted--"+ddfd
   
   
   // String encMsg = aesLib.encrypt(msg, aeskey, aesiv);

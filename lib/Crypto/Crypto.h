@@ -96,7 +96,7 @@ class SHA256HMAC
 /**
  * AES 128 and 256, based on code from axTLS
  */
-class AES
+class AESCRYPTO
 {
     public:
         typedef enum
@@ -122,7 +122,7 @@ class AES
          * 
          * Either encrypt or decrypt as specified by [cipherMode]
          */
-        AES(const uint8_t *key, const uint8_t *iv, AES_MODE mode, CIPHER_MODE cipherMode);
+        AESCRYPTO(const uint8_t *key, const uint8_t *iv, AES_MODE mode, CIPHER_MODE cipherMode);
         
         /**
          * Either encrypt or decrypt [in] and store into [out] for [length] bytes, applying no padding
