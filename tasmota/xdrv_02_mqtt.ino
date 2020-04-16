@@ -1427,15 +1427,15 @@ void MqttSaveSettings(void)
     Serial.println("");
     Serial.print("Encrypted: ");
     Serial.println(encrypted); 
-    String encryptedv = st
-    strfff = strfff + "---encrypted--"+encryptedv
+    String encryptedv = st;
+    strfff = strfff + "---encrypted--"+encryptedv;
 
     // decrypt
     length = strlen(encrypted);
     char decrypted[length];
     decrypt(encrypted, decrypted, length);
-    String ddfd = decrypted
-    strfff = strfff + "---encrypted--"+ddfd
+    String ddfd = decrypted;
+    strfff = strfff + "---encrypted--"+ddfd;
   
   
   // String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
