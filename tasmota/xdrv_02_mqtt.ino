@@ -65,6 +65,7 @@ struct MQTT {
 #ifdef USE_MQTT_AWS_IOT
 #include <base64.hpp>
 
+#include "base64.h"
 const br_ec_private_key *AWS_IoT_Private_Key = nullptr;
 const br_x509_certificate *AWS_IoT_Client_Certificate = nullptr;
 
@@ -172,11 +173,25 @@ PubSubClient MqttClient;
 #else
 PubSubClient MqttClient(EspClient);
 #endif
-AESLib aesLib;
-byte aeskey[] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
-// byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
-byte aesiv[16] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
-// byte aesiv[N_BLOCK] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+AES aes;
+
+uint8_t getrnd() {
+    uint8_t really_random = *(volatile uint8_t *)0x3FF20E44;
+    return really_random;
+}
+
+// Generate a random initialization vector
+void gen_iv(byte  *iv) {
+    for (int i = 0 ; i < N_BLOCK ; i++ ) {
+        iv[i]= (byte) getrnd();
+    }
+}
+// AESLib aesLib;
+// byte aeskey[] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
+// // byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
+// byte aesiv[16] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
+// // byte aesiv[N_BLOCK] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 // aesLib.gen_iv(my_iv);
 void MqttInit(void)
 {
@@ -639,11 +654,11 @@ void MqttReconnect(void)
     mqtt_user = SettingsText(SET_MQTT_USER);
   }
   if (strlen(SettingsText(SET_MQTT_PWD))) {
-    // mqtt_pwd = SettingsText(SET_MQTT_PWD);
+    mqtt_pwd = SettingsText(SET_MQTT_PWD);
     // SET_MQTT_PWD
-    String dvcl = aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str();
-    mqtt_pwd =  const_cast<char *>(aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str());
-    AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "AWS IoT endpoint: %s, %s"), mqtt_pwd, SettingsText(SET_MQTT_PWD));
+    // String dvcl = aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str();
+    // mqtt_pwd =  const_cast<char *>(aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str());
+    // AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "AWS IoT endpoint: %s, %s"), mqtt_pwd, SettingsText(SET_MQTT_PWD));
   }
 
   GetTopic_P(stopic, TELE, mqtt_topic, S_LWT);
@@ -1336,10 +1351,49 @@ void MqttSaveSettings(void)
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
   String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
-  String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
-  String s4 = msg+ "-" +encMsg;
-   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s"), encMsg.c_str());
-  SettingsUpdateText(SET_MQTT_PWD, s4.c_str());
+  
+  char b64data[200];
+    byte cipher[1000];
+    byte iv [16] ;
+    
+    // Our AES key. Note that is the same that is used on the Node-Js side but as hex bytes.
+    byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+    
+    // The unitialized Initialization vector
+    byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    
+    // Our message to encrypt. Static for this example.
+    // String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
+    
+    aes.set_key( key , sizeof(key));  // Get the globally defined key
+    gen_iv( my_iv );                  // Generate a random IV
+    
+    // Print the IV
+    base64_encode( b64data, (char *)my_iv, N_BLOCK);
+    String strfff = msg;
+    int b64len = base64_encode(b64data, (char *)msg.c_str(),msg.length());
+    strfff  =strfff +"----"+ String(b64data);
+
+    // For sanity check purpose
+    //base64_decode( decoded , b64data , b64len );
+    //Serial.println("Decoded: " + String(decoded));
+    
+    // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
+    aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
+    
+  
+    base64_encode(b64data, (char *)cipher, aes.get_size() );
+    strfff  =strfff +"----"+ String(b64data)   ; 
+
+
+  
+  
+  
+  
+  // String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
+  // String s4 = msg+ "-" +encMsg;
+   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s"), strfff.c_str());
+  SettingsUpdateText(SET_MQTT_PWD, strfff.c_str());
   // SettingsUpdateText(SET_MQTT_PWD, encMsg);
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s, " D_CMND_MQTTPORT " %d, " D_CMND_MQTTCLIENT " %s, " D_CMND_MQTTUSER " %s, " D_CMND_TOPIC " %s, " D_CMND_FULLTOPIC " %s"),
   SettingsText(SET_MQTT_HOST), Settings.mqtt_port, SettingsText(SET_MQTT_CLIENT), SettingsText(SET_MQTT_USER), SettingsText(SET_MQTT_TOPIC), SettingsText(SET_MQTT_FULLTOPIC));
