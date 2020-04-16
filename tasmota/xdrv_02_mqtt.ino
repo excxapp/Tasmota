@@ -173,9 +173,11 @@ PubSubClient MqttClient;
 PubSubClient MqttClient(EspClient);
 #endif
 AESLib aesLib;
-byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
-byte aesiv[16] = {8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
-
+byte aeskey[] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
+// byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
+byte aesiv[16] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
+// byte aesiv[N_BLOCK] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+// aesLib.gen_iv(my_iv);
 void MqttInit(void)
 {
    
@@ -637,9 +639,11 @@ void MqttReconnect(void)
     mqtt_user = SettingsText(SET_MQTT_USER);
   }
   if (strlen(SettingsText(SET_MQTT_PWD))) {
-    mqtt_pwd = SettingsText(SET_MQTT_PWD);
+    // mqtt_pwd = SettingsText(SET_MQTT_PWD);
     // SET_MQTT_PWD
-    mqtt_pwd = aesLib.decrypt(mqtt_pwd, aeskey, aesiv)
+    String dvcl = aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str();
+    mqtt_pwd =  const_cast<char *>(aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str());
+    AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "AWS IoT endpoint: %s, %s"), mqtt_pwd, SettingsText(SET_MQTT_PWD));
   }
 
   GetTopic_P(stopic, TELE, mqtt_topic, S_LWT);
@@ -1333,8 +1337,9 @@ void MqttSaveSettings(void)
   WebGetArg("mp", tmp, sizeof(tmp));
   String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
   String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
-  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s"), encMsg.c_str());
-  SettingsUpdateText(SET_MQTT_PWD, encMsg.c_str());
+  String s4 = msg+ "-" +encMsg;
+   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s"), encMsg.c_str());
+  SettingsUpdateText(SET_MQTT_PWD, s4.c_str());
   // SettingsUpdateText(SET_MQTT_PWD, encMsg);
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s, " D_CMND_MQTTPORT " %d, " D_CMND_MQTTCLIENT " %s, " D_CMND_MQTTUSER " %s, " D_CMND_TOPIC " %s, " D_CMND_FULLTOPIC " %s"),
   SettingsText(SET_MQTT_HOST), Settings.mqtt_port, SettingsText(SET_MQTT_CLIENT), SettingsText(SET_MQTT_USER), SettingsText(SET_MQTT_TOPIC), SettingsText(SET_MQTT_FULLTOPIC));

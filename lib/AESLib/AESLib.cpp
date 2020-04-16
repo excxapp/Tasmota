@@ -27,29 +27,29 @@ String AESLib::decrypt(String msg, byte key[], byte my_iv[]) {
 
   char message[msg.length()];
   base64_decode(message, (char *)out, msg.length());
-  // printf("Out %s \n", message);
-  return String(decoded)
+  printf("Out %s \n", message);
+  return String(decoded);
   //Serial.println("Decoded: " + String(decoded));  
   //N_BLOCK
 }
 
-/*void decrypt(String b64data, String IV_base64, int size)
-{
-  char data_decoded[200];
-  char iv_decoded[200];
-  byte out[200];
-  char temp[200];
-  b64data.toCharArray(temp, 200);
-  base64_decode(data_decoded, temp, b64data.length());
-  IV_base64.toCharArray(temp, 200);
+// void decrypt(String b64data, String IV_base64, int size)
+// {
+//   char data_decoded[200];
+//   char iv_decoded[200];
+//   byte out[200];
+//   char temp[200];
+//   b64data.toCharArray(temp, 200);
+//   base64_decode(data_decoded, temp, b64data.length());
+//   IV_base64.toCharArray(temp, 200);
   
-  base64_decode(iv_decoded, temp, IV_base64.length());
+//   base64_decode(iv_decoded, temp, IV_base64.length());
   
-  aes.do_aes_decrypt((byte *)data_decoded, size, out, key, 128, (byte *)iv_decoded);
-  char message[msg.length()];
-  base64_decode(message, (char *)out, b64data.length());
-  printf("Out %s \n", message);
-}*/
+//   aes.do_aes_decrypt((byte *)data_decoded, size, out, key, 128, (byte *)iv_decoded);
+//   char message[msg.length()];
+//   base64_decode(message, (char *)out, b64data.length());
+//   printf("Out %s \n", message);
+// }
 
 
 
