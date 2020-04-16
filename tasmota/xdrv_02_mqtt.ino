@@ -1349,8 +1349,8 @@ void MqttSaveSettings(void)
   WebGetArg("mu", tmp, sizeof(tmp));
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
-  String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
-  
+  // String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
+   String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
   char b64data[200];
     byte cipher[1000];
     byte iv [16] ;
@@ -1371,7 +1371,7 @@ void MqttSaveSettings(void)
     base64_encode( b64data, (char *)my_iv, N_BLOCK);
     String strfff = msg;
     int b64len = base64_encode(b64data, (char *)msg.c_str(),msg.length());
-    strfff  =strfff +"----"+ String(b64data);
+    strfff  =strfff +"---iv-"+ String(b64data);
 
     // For sanity check purpose
     //base64_decode( decoded , b64data , b64len );
@@ -1380,10 +1380,10 @@ void MqttSaveSettings(void)
     // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
     aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
     
+
   
     base64_encode(b64data, (char *)cipher, aes.get_size() );
-    strfff  =strfff +"----"+ String(b64data)   ; 
-
+    strfff  =strfff +"--coded--"+ String(b64data)   ; 
 
   
   

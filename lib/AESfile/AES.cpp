@@ -580,7 +580,7 @@ void AES::do_aes_decrypt(byte *cipher,int size_c,byte *plain,byte *key, int bits
 
 /******************************************************************************/
 
-void AES::do_aes_decrypt(byte *cipher,int size_c,byte *plain,byte *key, int bits){
+void AES::do_aes_decrypt(byte *cipher,int size_c, byte *plain,byte *key, int bits){
   set_size(size_c);
   int blocks = size_c / N_BLOCK;
   set_key (key, bits);
