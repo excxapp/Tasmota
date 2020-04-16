@@ -173,6 +173,10 @@ PubSubClient MqttClient;
 PubSubClient MqttClient(EspClient);
 #endif
 AESLib aesLib;
+
+byte aeskey[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+byte aesiv[N_BLOCK] = {8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
+
 void MqttInit(void)
 {
    
@@ -180,7 +184,7 @@ void MqttInit(void)
  
   byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
   
-  byte my_iv[N_BLOCK] = { 8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
+  byte my_iv[N_BLOCK] = {8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
   // aesLib.gen_iv(my_iv);
   String msg = "i like dogs";
   String encMsg = aesLib.encrypt(msg, key, my_iv);
@@ -1335,9 +1339,13 @@ void MqttSaveSettings(void)
   WebGetArg("mu", tmp, sizeof(tmp));
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
+  String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
+  String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
+  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s", encMsg.c_str()),
   SettingsUpdateText(SET_MQTT_PWD, (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp);
+  // SettingsUpdateText(SET_MQTT_PWD, encMsg);
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s, " D_CMND_MQTTPORT " %d, " D_CMND_MQTTCLIENT " %s, " D_CMND_MQTTUSER " %s, " D_CMND_TOPIC " %s, " D_CMND_FULLTOPIC " %s"),
-    SettingsText(SET_MQTT_HOST), Settings.mqtt_port, SettingsText(SET_MQTT_CLIENT), SettingsText(SET_MQTT_USER), SettingsText(SET_MQTT_TOPIC), SettingsText(SET_MQTT_FULLTOPIC));
+  SettingsText(SET_MQTT_HOST), Settings.mqtt_port, SettingsText(SET_MQTT_CLIENT), SettingsText(SET_MQTT_USER), SettingsText(SET_MQTT_TOPIC), SettingsText(SET_MQTT_FULLTOPIC));
 #endif
 }
 #endif  // USE_WEBSERVER
