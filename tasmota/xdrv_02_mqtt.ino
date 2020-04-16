@@ -173,23 +173,13 @@ PubSubClient MqttClient;
 PubSubClient MqttClient(EspClient);
 #endif
 AESLib aesLib;
-
-byte aeskey[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-byte aesiv[N_BLOCK] = {8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
+byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
+byte aesiv[16] = {8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
 
 void MqttInit(void)
 {
    
   uint16_t mqttport  = Settings.mqtt_port;
- 
-  byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-  
-  byte my_iv[N_BLOCK] = {8,7,4,9,6,9,3,1,4,5,8,2,5,1,4,0};
-  // aesLib.gen_iv(my_iv);
-  String msg = "i like dogs";
-  String encMsg = aesLib.encrypt(msg, key, my_iv);
-
-  AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "TLS connection error: %d, %s"), mqttport, encMsg.c_str());
 
   // AddLog_P2(LOG_LEVEL_INFO, S_LOG_MQTT, PSTR("init-start %d"), mqttport );
 #if defined(USE_MQTT_TLS)
@@ -295,7 +285,7 @@ void MqttDataHandler(char* mqtt_topic, uint8_t* mqtt_data, unsigned int data_len
 
   AddLog_P2(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_MQTT D_RECEIVED_TOPIC " \"%s\", " D_DATA_SIZE " %d, " D_DATA " \"%s\""), topic, data_len, data);
 //  if (LOG_LEVEL_DEBUG_MORE <= seriallog_level) { Serial.println(data); }
-
+ 
   // MQTT pre-processing
   XdrvMailbox.index = strlen(topic);
   XdrvMailbox.data_len = data_len;
@@ -648,6 +638,8 @@ void MqttReconnect(void)
   }
   if (strlen(SettingsText(SET_MQTT_PWD))) {
     mqtt_pwd = SettingsText(SET_MQTT_PWD);
+    // SET_MQTT_PWD
+    mqtt_pwd = aesLib.decrypt(mqtt_pwd, aeskey, aesiv)
   }
 
   GetTopic_P(stopic, TELE, mqtt_topic, S_LWT);

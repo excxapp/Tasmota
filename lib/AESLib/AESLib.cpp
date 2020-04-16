@@ -12,7 +12,7 @@ void AESLib::gen_iv(byte  *iv) {
     }
 }
 
-/*String AESLib::decrypt(String msg, byte key[], byte my_iv[]) {
+String AESLib::decrypt(String msg, byte key[], byte my_iv[]) {
   
   aes.set_key(key, sizeof(key));
   //int base64_decode(char * output, char * input, int inputLen) {
@@ -24,16 +24,14 @@ void AESLib::gen_iv(byte  *iv) {
   
   byte out[200];
   aes.do_aes_decrypt((byte *)decoded, N_BLOCK, out, key, 128, (byte *)my_iv);
-  
+
   char message[msg.length()];
   base64_decode(message, (char *)out, msg.length());
-  printf("Out %s \n", message);
-  
+  // printf("Out %s \n", message);
+  return String(decoded)
   //Serial.println("Decoded: " + String(decoded));  
-  
   //N_BLOCK
-
-}*/
+}
 
 /*void decrypt(String b64data, String IV_base64, int size)
 {
