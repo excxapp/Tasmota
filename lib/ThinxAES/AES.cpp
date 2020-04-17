@@ -36,13 +36,13 @@
 /* This version derived by Mark Tillotson 2012-01-23, tidied up, slimmed down
    and tailored to 8-bit microcontroller abilities and Arduino datatypes.
 
-   The s-box and inverse s-box were retained as tables (0.5kB PROGMEM) but all 
-   the other transformations are coded to save table space.  Many efficiency 
+   The s-box and inverse s-box were retained as tables (0.5kB PROGMEM) but all
+   the other transformations are coded to save table space.  Many efficiency
    improvments to the routines mix_sub_columns() and inv_mix_sub_columns()
    (mainly common sub-expression elimination).
 
    Only the routines with precalculated subkey schedule are retained (together
-   with set_key() - this does however mean each AES object takes 240 bytes of 
+   with set_key() - this does however mean each AES object takes 240 bytes of
    RAM, alas)
 
    The CBC routines side-effect the iv argument (so that successive calls work
@@ -111,19 +111,25 @@ static const byte s_inv [0x100] PROGMEM =
 
 static byte s_box (byte x)
 {
-  //  return fwd_affine (pgm_read_byte (&inv [x])) ;
+#if defined(__x86_64)
+  return s_fwd[x];
+#else
   return pgm_read_byte (& s_fwd [x]) ;
+#endif
 }
 
 // Inverse Sbox
 static byte is_box (byte x)
 {
-  // return pgm_read_byte (&inv [inv_affine (x)]) ;
+#if defined(__x86_64)
+  return s_inv[x];
+#else
   return pgm_read_byte (& s_inv [x]) ;
+#endif
 }
 
 
-static void xor_block (byte * d, byte * s)
+static void xor_block (byte * d, const byte * s)
 {
   for (byte i = 0 ; i < N_BLOCK ; i += 4)
     {
@@ -134,7 +140,7 @@ static void xor_block (byte * d, byte * s)
     }
 }
 
-static void copy_and_key (byte * d, byte * s, byte * k)
+static void copy_and_key (byte * d, const byte * s, const byte * k)
 {
   for (byte i = 0 ; i < N_BLOCK ; i += 4)
     {
@@ -185,7 +191,7 @@ static void inv_shift_sub_rows (byte st[N_BLOCK])
 
 /* SUB COLUMNS PHASE */
 
-static void mix_sub_columns (byte dt[N_BLOCK], byte st[N_BLOCK])
+static void mix_sub_columns (byte dt[N_BLOCK], const byte st[N_BLOCK])
 {
   byte j = 5 ;
   byte k = 10 ;
@@ -205,7 +211,7 @@ static void mix_sub_columns (byte dt[N_BLOCK], byte st[N_BLOCK])
     }
 }
 
-static void inv_mix_sub_columns (byte dt[N_BLOCK], byte st[N_BLOCK])
+static void inv_mix_sub_columns (byte dt[N_BLOCK], const byte st[N_BLOCK])
 {
   for (byte i = 0 ; i < N_BLOCK ; i += N_COL)
     {
@@ -218,7 +224,7 @@ static void inv_mix_sub_columns (byte dt[N_BLOCK], byte st[N_BLOCK])
       byte a8 = f2(a4), b8 = f2(b4), c8 = f2(c4), d8 = f2(d4) ;
       byte a9 = a8 ^ a1,b9 = b8 ^ b1,c9 = c8 ^ c1,d9 = d8 ^ d1 ;
       byte ac = a8 ^ a4,bc = b8 ^ b4,cc = c8 ^ c4,dc = d8 ^ d4 ;
-      
+
       dt[i]         = is_box (ac^a2  ^  b9^b2  ^  cc^c1  ^  d9) ;
       dt[(i+5)&15]  = is_box (a9     ^  bc^b2  ^  c9^c2  ^  dc^d1) ;
       dt[(i+10)&15] = is_box (ac^a1  ^  b9     ^  cc^c2  ^  d9^d2) ;
@@ -229,57 +235,61 @@ static void inv_mix_sub_columns (byte dt[N_BLOCK], byte st[N_BLOCK])
 /******************************************************************************/
 
 AES::AES(){
-  byte ar_iv[8] = { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01 };
+  byte ar_iv[8] = { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
   memcpy(iv,ar_iv,8);
   memcpy(iv+8,ar_iv,8);
-  arr_pad[0] = 0x01;
-  arr_pad[1] = 0x02;
-  arr_pad[2] = 0x03;
-  arr_pad[3] = 0x04;
-  arr_pad[4] = 0x05;
-  arr_pad[5] = 0x06;
-  arr_pad[6] = 0x07;
-  arr_pad[7] = 0x08;
-  arr_pad[8] = 0x09;
-  arr_pad[9] = 0x0a;
-  arr_pad[10] = 0x0b;
-  arr_pad[11] = 0x0c;
-  arr_pad[12] = 0x0d;
-  arr_pad[13] = 0x0e;
-  arr_pad[14] = 0x0f;
+  // make sure that the padding characters are outside the range of the base64 alphabet
+  // for none base64 encode message collisions can happen :-(
+  arr_pad[0] = 0x82;
+  arr_pad[1] = 0x84;
+  arr_pad[2] = 0x88;
+  arr_pad[3] = 0x9f;
+  arr_pad[4] = 0x92;
+  arr_pad[5] = 0x94;
+  arr_pad[6] = 0x98;
+  arr_pad[7] = 0x9f;
+  arr_pad[8] = 0xa2;
+  arr_pad[9] = 0xa4;
+  arr_pad[10] = 0xa8;
+  arr_pad[11] = 0xaf;
+  arr_pad[12] = 0xb2;
+  arr_pad[13] = 0xb4;
+  arr_pad[14] = 0xb8;
+  // arr_pad[15] = 0xbf; // padding past end of array which has 15 elements
+  padmode = paddingMode::Array; // backwards compatibility
 }
 
 /******************************************************************************/
 
-byte AES::set_key (byte key [], int keylen)
+byte AES::set_key (const byte key [], uint16_t keylen)
 {
   byte hi ;
   switch (keylen)
     {
     case 16:
-    case 128: 
+    case 128:
       keylen = 16; // 10 rounds
       round = 10 ;
       break;
     case 24:
-    case 192: 
+    case 192:
       keylen = 24; // 12 rounds
       round = 12 ;
       break;
     case 32:
-    case 256: 
+    case 256:
       keylen = 32; // 14 rounds
       round = 14 ;
       break;
-    default: 
-      round = 0; 
+    default:
+      round = 0;
       return FAILURE;
     }
   hi = (round + 1) << 4 ;
   copy_n_bytes (key_sched, key, keylen) ;
   byte t[4] ;
   byte next = keylen ;
-  for (byte cc = keylen, rc = 1 ; cc < hi ; cc += N_COL) 
+  for (byte cc = keylen, rc = 1 ; cc < hi ; cc += N_COL)
     {
       for (byte i = 0 ; i < N_COL ; i++)
         t[i] = key_sched [cc-4+i] ;
@@ -316,7 +326,7 @@ void AES::clean ()
 
 /******************************************************************************/
 
-void AES::copy_n_bytes (byte * d, byte * s, byte nn)
+void AES::copy_n_bytes (byte * d, const byte * s, byte nn)
 {
   while (nn >= 4)
     {
@@ -332,7 +342,24 @@ void AES::copy_n_bytes (byte * d, byte * s, byte nn)
 
 /******************************************************************************/
 
-byte AES::encrypt (byte plain [N_BLOCK], byte cipher [N_BLOCK])
+uint8_t AES::getrandom()
+{
+#ifdef __AVR__
+    srand (millis());
+#else
+#if defined(ESP8266) || defined(ESP32)
+    srand ((unsigned int)time(NULL));
+#else
+    srand (millis());
+#endif
+#endif
+    uint8_t really_random = rand() % 255;
+    return really_random;
+}
+
+/******************************************************************************/
+
+byte AES::encrypt (const byte plain [N_BLOCK], byte cipher [N_BLOCK])
 {
   if (round)
     {
@@ -340,7 +367,7 @@ byte AES::encrypt (byte plain [N_BLOCK], byte cipher [N_BLOCK])
       copy_and_key (s1, plain, (byte*) (key_sched)) ;
 
       for (r = 1 ; r < round ; r++)
-        {  
+        {
           byte s2 [N_BLOCK] ;
           mix_sub_columns (s2, s1) ;
           copy_and_key (s1, s2, (byte*) (key_sched + r * N_BLOCK)) ;
@@ -355,7 +382,7 @@ byte AES::encrypt (byte plain [N_BLOCK], byte cipher [N_BLOCK])
 
 /******************************************************************************/
 
-byte AES::cbc_encrypt (byte * plain, byte * cipher, int n_block, byte iv [N_BLOCK])
+byte AES::cbc_encrypt (const byte * plain, byte * cipher, int n_block, byte iv [N_BLOCK])
 {
   while (n_block--)
     {
@@ -371,7 +398,7 @@ byte AES::cbc_encrypt (byte * plain, byte * cipher, int n_block, byte iv [N_BLOC
 
 /******************************************************************************/
 
-byte AES::cbc_encrypt (byte * plain, byte * cipher, int n_block)
+byte AES::cbc_encrypt (const byte * plain, byte * cipher, int n_block)
 {
   while (n_block--)
     {
@@ -387,7 +414,7 @@ byte AES::cbc_encrypt (byte * plain, byte * cipher, int n_block)
 
 /******************************************************************************/
 
-byte AES::decrypt (byte plain [N_BLOCK], byte cipher [N_BLOCK])
+byte AES::decrypt (const byte plain [N_BLOCK], byte cipher [N_BLOCK])
 {
   if (round)
     {
@@ -410,8 +437,8 @@ byte AES::decrypt (byte plain [N_BLOCK], byte cipher [N_BLOCK])
 
 /******************************************************************************/
 
-byte AES::cbc_decrypt (byte * cipher, byte * plain, int n_block, byte iv [N_BLOCK])
-{   
+byte AES::cbc_decrypt (const byte * cipher, byte * plain, int n_block, byte iv [N_BLOCK])
+{
   while (n_block--)
     {
       byte tmp [N_BLOCK] ;
@@ -428,8 +455,8 @@ byte AES::cbc_decrypt (byte * cipher, byte * plain, int n_block, byte iv [N_BLOC
 
 /******************************************************************************/
 
-byte AES::cbc_decrypt (byte * cipher, byte * plain, int n_block)
-{   
+byte AES::cbc_decrypt (const byte * cipher, byte * plain, int n_block)
+{
   while (n_block--)
     {
       byte tmp [N_BLOCK] ;
@@ -448,7 +475,7 @@ byte AES::cbc_decrypt (byte * cipher, byte * plain, int n_block)
 
 void AES::set_IV(unsigned long long int IVCl){
   memcpy(iv,&IVCl,8);
-  memcpy(iv+8,&IVCl,8);
+  memcpy(iv+8,&IVCl+8,8);
   IVC = IVCl;
 }
 
@@ -457,7 +484,7 @@ void AES::set_IV(unsigned long long int IVCl){
 void AES::iv_inc(){
   IVC += 1;
   memcpy(iv,&IVC,8);
-  memcpy(iv+8,&IVC,8);
+  memcpy(iv+8,&IVC+8,8);
 }
 
 /******************************************************************************/
@@ -477,35 +504,161 @@ void AES::set_size(int sizel){
 
 void AES::get_IV(byte *out){
   memcpy(out,&IVC,8);
-  memcpy(out+8,&IVC,8);
+  memcpy(out+8,&IVC+8,8);
 }
 
-/******************************************************************************/
-
+/******************************************************************************
+ *  Padding modes (https://medium.com/coinmonks/block-sizes-and-padding-in-crypto-5b6d2565370e)
+ * CMS (Cryptographic Message Syntax).
+ *     This pads with the same value as the number of padding bytes.
+ *     Defined in RFC 5652, PKCS#5, PKCS#7 (X.509 certificate) and RFC 1423 PEM.
+ * Bit.
+ *     This pads with 0x80 (10000000) followed by zero (null) bytes. Defined in ANSI X.923 and ISO/IEC 9797–1.
+ * ZeroLength.
+ *     This pads with zeros except for the last byte which is equal to the number (length) of padding bytes.
+ * Null.
+ *     This pads will NULL bytes. This is only used with ASCII text.
+ * Space.
+ *     This pads with spaces. This is only used with ASCII text.
+ * Random. (not implemented)
+ *     This pads with random bytes with the last byte defined by the number of padding bytes.
+ * Array (backward compatibility for this library)
+ *     This pads with the characters from the predefined arr_pad
+ */
+/// TODO:: How can we determine that the msg has beeen padded ?
+/// any byte array can be a valid message to encrypt
+/// so padding should be made reversable and padding should contain info over the padding length or
+/// the reverse operation will not harm the content (see ascii mode)
+/// Idea is to add pad block. So now we now that the last block in the message is a padding block.
+/// info in this padding block can now be used to remove the padding on the previous block
+/// of course if the 0x00 character is included in an ascii message it will be truncated anyhow
+/// but for none ascii message this will not work.
+/// an additional block is only usefull if the padding block contains the number of padding characters
+/// so not all possible padding modes can take advantage of this
+/// if using NULL in ascii mode then the string will be ended anyway
+/// if using SPACE, it can be that the trailing spaces are truncated. But this most often not an issue in ASCII mode
+///
+/// random padding can not be reversed
+/// array padding is questionable to reverse
 void AES::calc_size_n_pad(int p_size){
-  int s_of_p = p_size;
-  if ( s_of_p % N_BLOCK == 0){
-      size = s_of_p + 16;
-  }else{
-    size = s_of_p +  (N_BLOCK-(s_of_p % N_BLOCK));
+  int s_of_p = p_size;//- 1;  /// why this - 1 ??? is this removing the 0x\0 at the end of a string ? should not be the case for no string messages
+  switch (padmode){
+  case paddingMode::Array:
+  case paddingMode::Null:
+  case paddingMode::Space:
+  case paddingMode::Random:
+    if ( s_of_p % N_BLOCK == 0){  // OK in ASCII mode Space or Null padding or random padding
+        size = s_of_p;
+    }else{
+      size = s_of_p +  (N_BLOCK-(s_of_p % N_BLOCK));
+    }
+    pad = size - s_of_p;
+    break;
+  case paddingMode::CMS:
+  case paddingMode::ZeroLength:
+  case paddingMode::Bit:
+  // additional block
+    size = p_size + N_BLOCK -(p_size % N_BLOCK);
+    pad = size - p_size;
+    break;
   }
-  pad = size - s_of_p;
+}
+
+int AES::get_padded_len(int p_size){
+  calc_size_n_pad(p_size);
+  return size;
+}
+
+int AES::get_pad_len(int p_size){
+  calc_size_n_pad(p_size);
+  return pad;
 }
 
 /******************************************************************************/
-
-void AES::padPlaintext(void* in,byte* out)
+void AES::padPlaintext(const void* in,byte* out)
 {
   memcpy(out,in,size);
   for (int i = size-pad; i < size; i++){;
-    out[i] = arr_pad[pad - 1];
+    switch (padmode){
+      case paddingMode::CMS :
+        out[i] = pad;
+        break;
+      case paddingMode::Bit:
+      case paddingMode::ZeroLength:
+      case paddingMode::Null:
+        out[i] = 0x00;
+        break;
+      case paddingMode::Space:
+        out[i] = 0x20;
+        break;
+      case paddingMode::Array:
+        out[i] = arr_pad[pad - 1];
+        break;
+      case paddingMode::Random:
+        out[i] = getrandom();
+    }
   }
+  if (padmode == paddingMode::Bit)
+    out[size-pad] = 0x80;
+  if (padmode == paddingMode::ZeroLength)
+    out[size-1] = pad;
+
 }
 
 /******************************************************************************/
 
-bool AES::CheckPad(byte* in,int lsize){
-  if (in[lsize-1] <= 0x0f){ 
+int AES::get_unpadded_len(const byte* msg,int p_size)
+{
+  byte pad_char = 0x00;
+  int i = 0;
+
+  switch (padmode)
+  {
+  case paddingMode::CMS:
+  case paddingMode::ZeroLength: //last byte contains pad length
+    return p_size - (int) msg[p_size-1];
+    break;
+  case paddingMode::Random:
+    return p_size;
+    break;
+  case paddingMode::Array:
+    for( i = 15; i > 0 && msg[p_size-1] !=arr_pad[i]; i--)
+    pad_char = arr_pad[i];
+    for ( i = p_size-1; ((i >=0) && (msg[i] == pad_char)); i--){
+    }
+    return i+1;
+    break;
+  case paddingMode::Space:
+    pad_char = 0x20;
+    for ( i = p_size-1; ((i >=0) && (msg[i] == pad_char)); i--){
+    }
+    return i+1;
+    break;
+  case paddingMode::Bit:
+    for ( i = p_size-1; ((i >=0) && (msg[i] == pad_char)); i--){
+    }
+    return i;
+    break;
+  default:
+    return p_size;
+    break;
+ }
+}
+
+/******************************************************************************/
+void AES::setPadMode(paddingMode mode){
+  padmode = mode;
+}
+
+/******************************************************************************/
+paddingMode AES::getPadMode(){
+  return padmode ;
+}
+
+/******************************************************************************/
+/// TODO check different modes
+bool AES::CheckPad(const byte* in,int lsize){
+  if (in[lsize-1] <= 0x0f){  //only block of less than 16 bytes are allowed
     int lpad = (int)in[lsize-1];
     for (int i = lsize - 1; i >= lsize-lpad; i--){
       if (arr_pad[lpad - 1] != in[i]){
@@ -520,7 +673,7 @@ return true;
 
 /******************************************************************************/
 
-void AES::printArray(byte output[],bool p_pad)
+void AES::printArray(const byte output[],bool p_pad)
 {
 uint8_t i,j;
 uint8_t loops = size/N_BLOCK;
@@ -529,30 +682,31 @@ for (j = 0; j < loops; j += 1){
   if (p_pad && (j == (loops  - 1)) ) { outp = N_BLOCK - pad; }
   for (i = 0; i < outp; i++)
   {
-    printf_P(PSTR("%c"),output[j*N_BLOCK + i]);
+    printf("%c", output[j*N_BLOCK + i]);
   }
 }
-  printf_P(PSTR("\n"));
+  printf("\n");
 }
 
 /******************************************************************************/
 
-void AES::printArray(byte output[],int sizel)
+void AES::printArray(const byte output[],int sizel)
 {
   for (int i = 0; i < sizel; i++)
   {
-    printf_P(PSTR("%x"),output[i]);
+    printf("%x", output[i]);
   }
-  printf_P(PSTR("\n"));
+  printf("\n");
 }
 
 
 /******************************************************************************/
 
-void AES::do_aes_encrypt(byte *plain,int size_p,byte *cipher,byte *key, int bits, byte ivl [N_BLOCK]){
+void AES::do_aes_encrypt(const byte *plain,int size_p,byte *cipher, const byte *key, int bits, byte ivl [N_BLOCK]){
   calc_size_n_pad(size_p);
   byte plain_p[get_size()];
   padPlaintext(plain,plain_p);
+
   int blocks = get_size() / N_BLOCK;
   set_key (key, bits) ;
   cbc_encrypt (plain_p, cipher, blocks, ivl);
@@ -560,7 +714,7 @@ void AES::do_aes_encrypt(byte *plain,int size_p,byte *cipher,byte *key, int bits
 
 /******************************************************************************/
 
-void AES::do_aes_encrypt(byte *plain,int size_p,byte *cipher,byte *key, int bits){
+void AES::do_aes_encrypt(const byte *plain,int size_p,byte *cipher, const byte *key, int bits){
   calc_size_n_pad(size_p);
   byte plain_p[get_size()];
   padPlaintext(plain,plain_p);
@@ -571,20 +725,22 @@ void AES::do_aes_encrypt(byte *plain,int size_p,byte *cipher,byte *key, int bits
 
 /******************************************************************************/
 
-void AES::do_aes_decrypt(byte *cipher,int size_c,byte *plain,byte *key, int bits, byte ivl [N_BLOCK]){
+int AES::do_aes_decrypt(const byte *cipher,int size_c,byte *plain,const byte *key, int bits, byte ivl [N_BLOCK]){
   set_size(size_c);
   int blocks = size_c / N_BLOCK;
   set_key (key, bits);
   cbc_decrypt (cipher,plain, blocks, ivl);
+  return get_unpadded_len(plain,size_c);
 }
 
 /******************************************************************************/
 
-void AES::do_aes_decrypt(byte *cipher,int size_c, byte *plain,byte *key, int bits){
+int AES::do_aes_decrypt(const byte *cipher,int size_c,byte *plain,const byte *key, int bits){
   set_size(size_c);
   int blocks = size_c / N_BLOCK;
   set_key (key, bits);
   cbc_decrypt (cipher,plain, blocks);
+  return get_unpadded_len(plain,size_c);
 }
 
 
