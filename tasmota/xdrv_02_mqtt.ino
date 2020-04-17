@@ -1388,21 +1388,19 @@ void MqttSaveSettings(void)
   
   sprintf(cleartext, "START; %i \n", loopcount);
 
-  print_key_iv();
-
   // Encrypt
   byte enc_iv[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
   String encrypted = encrypt(cleartext, enc_iv);
   sprintf(ciphertext, "%s", encrypted.c_str());
   // Serial.print("Ciphertext: ");
   // Serial.println(encrypted);
-  msg = msg + encrypted
+  msg = msg + encrypted;
   // Decrypt
-  byte dec_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
+  byte dec_iv[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
   String decrypted = decrypt(ciphertext, dec_iv);
   Serial.print("Cleartext: ");
   Serial.println(decrypted);
-  msg = msg + "---decrypted---" +decrypted
+  msg = msg + "---decrypted---" +decrypted;
   
   SettingsUpdateText(SET_MQTT_PWD, msg.c_str());
   // SettingsUpdateText(SET_MQTT_PWD, encMsg);
