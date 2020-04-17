@@ -172,38 +172,26 @@ PubSubClient MqttClient;
 #else
 PubSubClient MqttClient(EspClient);
 #endif
-AESLib aesLib;
 
-int loopcount = 0;
+AES aes;
 
-char cleartext[256];
-char ciphertext[512];
-
-// AES Encryption Key
-byte aes_key[] = { 0x15, 0x2B, 0x7E, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-
-// General initialization vector (you must use your own IV's in production for full security!!!)
-byte aes_iv[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-// Generate IV (once)
-void aes_init() {
-  aesLib.gen_iv(aes_iv);
+uint8_t getrnd() {
+    uint8_t really_random = *(volatile uint8_t *)0x3FF20E44;
+    return really_random;
 }
 
-String encrypt(char * msg, byte iv[]) {  
-  int msgLen = strlen(msg);
-  char encrypted[2 * msgLen];
-  aesLib.encrypt64(msg, msgLen, encrypted, aes_key, iv);  
-  return String(encrypted);
+// Generate a random initialization vector
+void gen_iv(byte  *iv) {
+    for (int i = 0 ; i < N_BLOCK ; i++ ) {
+        iv[i]= (byte) getrnd();
+    }
 }
-
-String decrypt(char * msg, byte iv[]) {
-  unsigned long ms = micros();
-  int msgLen = strlen(msg);
-  char decrypted[msgLen]; // half may be enough
-  aesLib.decrypt64(msg, msgLen, decrypted, aes_key, iv);  
-  return String(decrypted);
-}
+// AESLib aesLib;
+// byte aeskey[] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
+// // byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
+// byte aesiv[16] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
+// // byte aesiv[N_BLOCK] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+// aesLib.gen_iv(my_iv);
 void MqttInit(void)
 {
    
@@ -1362,22 +1350,51 @@ void MqttSaveSettings(void)
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
   // String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
-   String codemsg = "";
-  aes_init();
-  byte enc_iv[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
-  String encrypted = encrypt(cleartext, enc_iv);
-  sprintf(ciphertext, "%s", encrypted.c_str());
-  codemsg = codemsg +encrypted;
-  // Decrypt
-  String decrypted = decrypt(ciphertext, dec_iv);  
-  Serial.print("Cleartext: ");
-  Serial.println(decrypted); 
-   codemsg = codemsg +"-----"+encrypted;
-
+   String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
+  char b64data[200];
+    byte cipher[1000];
+    byte iv [16] ;
+    
+    // Our AES key. Note that is the same that is used on the Node-Js side but as hex bytes.
+    byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+    
+    // The unitialized Initialization vector
+    byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    
+    // Our message to encrypt. Static for this example.
+    // String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
+    
+    aes.set_key( key , sizeof(key));  // Get the globally defined key
+    gen_iv( my_iv );                  // Generate a random IV
+    
+    // Print the IV
+    base64_encode( b64data, (char *)my_iv, N_BLOCK);
+    String strfff = "---iv-"+ String(b64data);
+    int b64len = base64_encode(b64data, (char *)msg.c_str(),msg.length());
+    // For sanity check purpose
+    strfff = strfff+"----msg---"+String(b64data);
+    //base64_decode( decoded , b64data , b64len );
+    //Serial.println("Decoded: " + String(decoded));
+    
+    // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
+    aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
+    String code =  ""
+    
+    int encodelend = base64_encode(b64data, (char *)cipher, aes.get_size() );
+    strfff  =strfff +"--coded--"+ String(b64data)   ; 
+    int d64len = base64_decode(code, (byte *)b64data, encodelend)
+    
+    
+    aes.do_aes_decrypt(cipher, d64len, (byte *)code, key, 128, my_iv);
+    base64_encode(code, (char *)cipher, aes.get_size() );
+    strfff  =strfff +"--devcoded--"+ String(code)   ; 
+  
+  
+  
   // String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
   // String s4 = msg+ "-" +encMsg;
    AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s"), strfff.c_str());
-  SettingsUpdateText(SET_MQTT_PWD, codemsg.c_str());
+  SettingsUpdateText(SET_MQTT_PWD, strfff.c_str());
   // SettingsUpdateText(SET_MQTT_PWD, encMsg);
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s, " D_CMND_MQTTPORT " %d, " D_CMND_MQTTCLIENT " %s, " D_CMND_MQTTUSER " %s, " D_CMND_TOPIC " %s, " D_CMND_FULLTOPIC " %s"),
   SettingsText(SET_MQTT_HOST), Settings.mqtt_port, SettingsText(SET_MQTT_CLIENT), SettingsText(SET_MQTT_USER), SettingsText(SET_MQTT_TOPIC), SettingsText(SET_MQTT_FULLTOPIC));

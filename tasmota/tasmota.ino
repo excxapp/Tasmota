@@ -50,7 +50,10 @@
 #endif
 #endif
 // Libraries
-#include "AESLib.h"
+#include "AES.h"
+// #include "Crypto.h"
+
+#include "Base64.h"
 #include <ESP8266HTTPClient.h>              // Ota
 #include <ESP8266httpUpdate.h>              // Ota
 #include <StreamString.h>                   // Webserver, Updater
