@@ -1349,9 +1349,9 @@ void MqttSaveSettings(void)
   WebGetArg("mu", tmp, sizeof(tmp));
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
-  // String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
-   String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
-  char b64data[200];
+  String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
+//    String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
+    char b64data[200];
     byte cipher[1000];
     byte iv [16] ;
     
@@ -1359,18 +1359,18 @@ void MqttSaveSettings(void)
     byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
     
     // The unitialized Initialization vector
-    byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    // byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    byte my_iv[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
     
-    // Our message to encrypt. Static for this example.
-    // String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
+    
     
     aes.set_key( key , sizeof(key));  // Get the globally defined key
-    gen_iv( my_iv );                  // Generate a random IV
+    // gen_iv( my_iv );                  // Generate a random IV
     
     // Print the IV
     base64_encode( b64data, (char *)my_iv, N_BLOCK);
     String strfff = "---iv-"+ String(b64data);
-    int b64len = base64_encode(b64data, (char *)msg.c_str(),msg.length());
+    int b64len = base64_encode(b64data, (char *)msg.c_str(), msg.length());
     // For sanity check purpose
     strfff = strfff+"----msg---"+String(b64data);
     //base64_decode( decoded , b64data , b64len );
@@ -1378,16 +1378,40 @@ void MqttSaveSettings(void)
     
     // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
     aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
-    String code =  ""
+    
     
     int encodelend = base64_encode(b64data, (char *)cipher, aes.get_size() );
     strfff  =strfff +"--coded--"+ String(b64data)   ; 
-    int d64len = base64_decode(code, (byte *)b64data, encodelend)
-    
-    
-    aes.do_aes_decrypt(cipher, d64len, (byte *)code, key, 128, my_iv);
-    base64_encode(code, (char *)cipher, aes.get_size() );
-    strfff  =strfff +"--devcoded--"+ String(code)   ; 
+
+
+    String coded = String(b64data);
+    char * strc = new char[strlen(coded.c_str())+1];
+    strcpy(strc, coded.c_str());
+    char * dccode = new char[10000];
+    int d64len = base64_decode(dccode, strc, aes.get_size());
+
+    // int d64len = base64_decode(code, (byte *)b64data, encodelend);
+    byte vcipher[1000];
+    aes.do_aes_decrypt(
+      vcipher,  
+      encodelend, 
+      (byte *)dccode, 
+      key, 
+      128, 
+      my_iv
+    );
+    // char decb64data[200];
+    // String s;
+    // s = vcipher;
+    // base64_encode(decb64data, (char *)vcipher, aes.get_size() );
+     char* p = new char[sizeof(vcipher)];
+    memcpy(p,vcipher,sizeof(vcipher));
+    p[sizeof(vcipher)] = 0;
+    // string ;
+    strfff  =strfff +"--decoded--"+p  ; 
+    // aes.do_aes_decrypt(cipher, d64len, (byte *)code, key, 128, my_iv);
+    // base64_encode(code, (char *)cipher, aes.get_size() );
+    // strfff  =strfff +"--devcoded--"+ String(code)   ; 
   
   
   

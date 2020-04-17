@@ -575,7 +575,7 @@ void AES::do_aes_decrypt(byte *cipher,int size_c,byte *plain,byte *key, int bits
   set_size(size_c);
   int blocks = size_c / N_BLOCK;
   set_key (key, bits);
-  cbc_decrypt (cipher,plain, blocks, ivl);
+  cbc_decrypt (cipher, plain, blocks, ivl);
 }
 
 /******************************************************************************/
