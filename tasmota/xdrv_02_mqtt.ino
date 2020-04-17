@@ -1378,13 +1378,16 @@ void MqttSaveSettings(void)
     
     // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
     aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
+    String code =  ""
     
-
-  
-    base64_encode(b64data, (char *)cipher, aes.get_size() );
+    int encodelend = base64_encode(b64data, (char *)cipher, aes.get_size() );
     strfff  =strfff +"--coded--"+ String(b64data)   ; 
-
-  
+    int d64len = base64_decode(code, (byte *)b64data, encodelend)
+    
+    
+    aes.do_aes_decrypt(cipher, d64len, (byte *)code, key, 128, my_iv);
+    base64_encode(code, (char *)cipher, aes.get_size() );
+    strfff  =strfff +"--devcoded--"+ String(code)   ; 
   
   
   
