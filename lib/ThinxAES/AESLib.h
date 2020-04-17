@@ -6,17 +6,9 @@
 #include "AES.h"
 #include "Base64.h"
 
-#ifndef __AVR__
-#include <iomanip> // provides std::setfill and setw:: (only for intToHex debugging)
-#include <sstream>
-#include <cstdint>
-#include <iostream>
-#include <string>
-#endif
 
 #include <ctype.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 
