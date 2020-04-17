@@ -24,7 +24,7 @@
 #ifndef USE_MQTT_TLS 
 #define USE_MQTT_TLS  
 #endif
-#define MQTT_PORT              1884
+// #define MQTT_PORT              1884
 #define USE_MQTT_TLS_CA_CERT 
 // #define MQTT_FINGERPRINT2      "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF"  // [MqttFingerprint2]
 

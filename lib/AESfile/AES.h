@@ -2,7 +2,6 @@
 #define __AES_H__
 
 #include "AES_config.h"
-#include "Base64.h"
 /*
  ---------------------------------------------------------------------------
  Copyright (c) 1998-2008, Brian Gladman, Worcester, UK. All rights reserved.
@@ -210,16 +209,26 @@ class AES
    * @return no return, The padded plaintext is stored in the out pointer.
    */
   void padPlaintext(void* in,byte* out);
-    
+
+  /** 去除填充
+   * 
+   * 去除填充.
+   * 
+   * @param in the string of the plaintext in a byte array
+   * @param lsize the size of the string
+   * @return no return
+   */
+  void unpadPlaintext(byte* in_data, int in_size);
+
   /** Check the if the padding is correct.
    * 
    * This functions checks the padding of the plaintext.
    * 
    * @param in the string of the plaintext in a byte array
-   * @param size the size of the string
+   * @param lsize the size of the string
    * @return true if correct / false if not
    */
-  bool CheckPad(byte* in,int size);
+  bool CheckPad(byte* in,int lsize);
 
   /** Prints the array given.
    * 
@@ -303,9 +312,9 @@ class AES
   int size;/**< hold the size of the plaintext to be ciphered */
   #if defined(AES_LINUX)
   timeval tv;/**< holds the time value on linux */
-  byte arr_pad[16];/**< holds the hexadecimal padding values on linux */
+  byte arr_pad[15];/**< holds the hexadecimal padding values on linux */
   #else
-    byte arr_pad[16] = { 0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10 };/**< holds the hexadecimal padding values */
+  byte arr_pad[16] = { 0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10 };/**< holds the hexadecimal padding values */
   #endif
 } ;
 

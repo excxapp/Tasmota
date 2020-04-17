@@ -494,17 +494,33 @@ void AES::calc_size_n_pad(int p_size){
 
 /******************************************************************************/
 
-void AES::padPlaintext(void* in,byte* out)
+void AES::padPlaintext(void* in, byte* out)
 {
   memcpy(out,in,size);
-  for (int i = size-pad; i < size; i++){;
+  for (int i = size-pad; i < size; i++){
     out[i] = arr_pad[pad - 1];
   }
 }
 
 /******************************************************************************/
 
-bool AES::CheckPad(byte* in,int lsize){
+void AES::unpadPlaintext(byte* in, int lsize){
+  if(in[lsize-1] <= 0x0f)
+  {
+    int lpad = (int)in[lsize-1];
+    for (int i = lsize - 1; i >= lsize-lpad; i--)
+    {
+      if (arr_pad[lpad - 1] == in[i])
+      {
+        in[i] = '\0';
+      }
+    }    
+  }
+}
+
+/******************************************************************************/
+
+bool AES::CheckPad(byte* in, int lsize){
   if (in[lsize-1] <= 0x0f){ 
     int lpad = (int)in[lsize-1];
     for (int i = lsize - 1; i >= lsize-lpad; i--){
@@ -515,8 +531,9 @@ bool AES::CheckPad(byte* in,int lsize){
   }else{
     return true;
   }
-return true;
+  return true;
 }
+
 
 /******************************************************************************/
 
@@ -575,12 +592,13 @@ void AES::do_aes_decrypt(byte *cipher,int size_c,byte *plain,byte *key, int bits
   set_size(size_c);
   int blocks = size_c / N_BLOCK;
   set_key (key, bits);
-  cbc_decrypt (cipher, plain, blocks, ivl);
+  cbc_decrypt (cipher,plain, blocks, ivl);
+  
 }
 
 /******************************************************************************/
 
-void AES::do_aes_decrypt(byte *cipher,int size_c, byte *plain,byte *key, int bits){
+void AES::do_aes_decrypt(byte *cipher,int size_c,byte *plain,byte *key, int bits){
   set_size(size_c);
   int blocks = size_c / N_BLOCK;
   set_key (key, bits);

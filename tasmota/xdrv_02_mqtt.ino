@@ -87,6 +87,99 @@ tls_dir_t tls_dir;          // memory copy of tls_dir from flash
 
 #endif  // USE_MQTT_AWS_IOT
 
+
+/**
+ * 
+ * start aes
+ * 
+ */
+
+uint8_t getrnd() {
+    uint8_t really_random = *(volatile uint8_t *)0x3FF20E44;
+    return really_random;
+}
+
+//生成随机初始化向量
+void gen_iv(byte  *iv) {
+    for (int i = 0 ; i < N_BLOCK ; i++ ) {
+        iv[i]= (byte) getrnd();
+    }
+}
+
+//加密    aes128  CBC  pkcs7填充  随机IV
+//输入：Str: 明文 Str: 密码
+//返回：Str: {"iv":"随机IV","msg":"密文"}
+//注意：如果加密崩溃，适当增加缓存，缓存一定要在堆上申请。
+String do_encrypt(String msg,  byte *key, byte *my_iv)
+{
+	size_t encrypt_size_len = 2000;				//缓存长度
+	char *b64data = new char[encrypt_size_len];	//开辟一个数组
+	byte *cipher = new byte[encrypt_size_len];	//为密文开辟一个数组
+    AES aes;
+    aes.set_key(key , sizeof(key));  	// 设置全局定义的密钥
+    memset(b64data, 0, encrypt_size_len);
+    memset(cipher, 0, encrypt_size_len);
+    //将msg进行base64编码
+    int b64len = base64_encode(b64data, (char *)msg.c_str(), msg.length());
+    //加密 使用AES128，密钥和IV，CBC和pkcs7填充
+    aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
+	  aes.clean();	//清理缓存中的密码
+    memset(b64data, 0, encrypt_size_len);
+    //将加密数据进行base64编码
+	  base64_encode(b64data, (char *)cipher, aes.get_size());
+    return String(b64data);
+}
+
+//解密    aes128  CBC  pkcs7填充
+//输入：Str: {"msg":"密文","iv":"随机IV"}
+//返回：Str: 明文 Str: 密码
+String do_decrypt(String CipherText, byte *key,  String my_iv_str)
+{ 
+    byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		char my_iv_char[50];
+		size_t encrypt_size_len = 2000;				//缓存长度
+		char *b64data = new char[encrypt_size_len]; //开辟一个数组
+		byte *cipher = new byte[encrypt_size_len]; //为密文开辟一个数组
+		char *plain_msg = new char[encrypt_size_len]; //为明文开辟一个数组
+		AES aes;
+		// 将缓冲区中的所有字节设置为0
+		memset(b64data, 0, encrypt_size_len);
+		memset(my_iv_char, 0, sizeof(my_iv_char));
+		CipherText.toCharArray(b64data, CipherText.length()+1);
+		my_iv_str.toCharArray(my_iv_char, my_iv_str.length()+1);
+		base64_decode((char *)my_iv, my_iv_char, strlen(my_iv_char));
+		// 将缓冲区中的所有字节设置为0
+		memset(cipher, 0, encrypt_size_len);
+		//加密数据的base64解码
+		int cipherlen = base64_decode((char *)cipher, b64data, strlen(b64data));
+
+		// 将缓冲区中的所有字节设置为0
+		memset(b64data, 0, encrypt_size_len);
+		//解密
+		aes.set_key( key , sizeof(key));  // Get the globally defined key 获取全局定义的密钥
+		aes.do_aes_decrypt(cipher, cipherlen, (byte *)b64data, key, 128, my_iv);
+		aes.unpadPlaintext((byte *)b64data, aes.get_size());			//去掉填充
+		aes.clean();	//清理缓存中的密码
+		
+		//base64解码
+		memset(plain_msg, 0, encrypt_size_len);
+
+		base64_decode(plain_msg, b64data, strlen(b64data));
+		String plain_msg_str = String(plain_msg);
+		delete [] b64data;
+		delete [] cipher;
+		delete [] plain_msg;
+		return plain_msg_str;
+}
+
+/**
+ * 
+ * end
+ * 
+ */
+
+
+
 // check whether the fingerprint is filled with a single value
 // Filled with 0x00 = accept any fingerprint and learn it for next time
 // Filled with 0xFF = accept any fingerpring forever
@@ -172,26 +265,9 @@ PubSubClient MqttClient;
 #else
 PubSubClient MqttClient(EspClient);
 #endif
-
-AES aes;
-
-uint8_t getrnd() {
-    uint8_t really_random = *(volatile uint8_t *)0x3FF20E44;
-    return really_random;
-}
-
-// Generate a random initialization vector
-void gen_iv(byte  *iv) {
-    for (int i = 0 ; i < N_BLOCK ; i++ ) {
-        iv[i]= (byte) getrnd();
-    }
-}
-// AESLib aesLib;
-// byte aeskey[] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
-// // byte aeskey[] = { 0x52,0xFD,0xFC,0x7,0x21,0x82,0x65,0x4F,0x16,0x3F,0x5F,0xF,0x9A,0x62,0x1D,0x72 };
-// byte aesiv[16] = { 79, 56, 72, 112, 56, 87, 81, 98, 70, 80, 84, 55, 98, 53, 65, 85 };
-// // byte aesiv[N_BLOCK] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-// aesLib.gen_iv(my_iv);
+byte x_aes_key[16] =    { 111, 108, 107, 109, 106, 104, 106, 107, 121, 103, 115, 100, 101, 102, 103, 110 };
+byte x_aes_iv[16] = { 111, 108, 107, 109, 106, 104, 106, 107, 121, 103, 115, 100, 101, 102, 103, 110 };
+String Base64Iv = "b2xrbWpoamt5Z3NkZWZnbg==";
 void MqttInit(void)
 {
    
@@ -655,8 +731,9 @@ void MqttReconnect(void)
   if (strlen(SettingsText(SET_MQTT_PWD))) {
     mqtt_pwd = SettingsText(SET_MQTT_PWD);
     // SET_MQTT_PWD
+    String orgMsg = do_decrypt( SettingsText(SET_MQTT_PWD), x_aes_key,Base64Iv);
     // String dvcl = aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str();
-    // mqtt_pwd =  const_cast<char *>(aesLib.decrypt(SettingsText(SET_MQTT_PWD), aeskey, aesiv).c_str());
+    mqtt_pwd =  const_cast<char *>(orgMsg.c_str());
     // AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT "AWS IoT endpoint: %s, %s"), mqtt_pwd, SettingsText(SET_MQTT_PWD));
   }
 
@@ -1350,76 +1427,8 @@ void MqttSaveSettings(void)
   SettingsUpdateText(SET_MQTT_USER, (!strlen(tmp)) ? MQTT_USER : (!strcmp(tmp,"0")) ? "" : tmp);
   WebGetArg("mp", tmp, sizeof(tmp));
   String msg = (!strlen(tmp)) ? "" : (!strcmp(tmp, D_ASTERISK_PWD)) ? SettingsText(SET_MQTT_PWD) : tmp;
-//    String msg = "{\"data\":{\"value\":300}, \"SEQN\":700 , \"msg\":\"IT WORKS!!\" }";
-    char b64data[200];
-    byte cipher[1000];
-    byte iv [16] ;
-    
-    // Our AES key. Note that is the same that is used on the Node-Js side but as hex bytes.
-    byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-    
-    // The unitialized Initialization vector
-    // byte my_iv[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    byte my_iv[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-    
-    
-    
-    aes.set_key( key , sizeof(key));  // Get the globally defined key
-    // gen_iv( my_iv );                  // Generate a random IV
-    
-    // Print the IV
-    base64_encode( b64data, (char *)my_iv, N_BLOCK);
-    String strfff = "---iv-"+ String(b64data);
-    int b64len = base64_encode(b64data, (char *)msg.c_str(), msg.length());
-    // For sanity check purpose
-    strfff = strfff+"----msg---"+String(b64data);
-    //base64_decode( decoded , b64data , b64len );
-    //Serial.println("Decoded: " + String(decoded));
-    
-    // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
-    aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
-    
-    
-    int encodelend = base64_encode(b64data, (char *)cipher, aes.get_size() );
-    strfff  =strfff +"--coded--"+ String(b64data)   ; 
-
-
-    String coded = String(b64data);
-    char * strc = new char[strlen(coded.c_str())+1];
-    strcpy(strc, coded.c_str());
-    char * dccode = new char[10000];
-    int d64len = base64_decode(dccode, strc, aes.get_size());
-
-    // int d64len = base64_decode(code, (byte *)b64data, encodelend);
-    byte vcipher[1000];
-    aes.do_aes_decrypt(
-      vcipher,  
-      encodelend, 
-      (byte *)dccode, 
-      key, 
-      128, 
-      my_iv
-    );
-    // char decb64data[200];
-    // String s;
-    // s = vcipher;
-    // base64_encode(decb64data, (char *)vcipher, aes.get_size() );
-     char* p = new char[sizeof(vcipher)];
-    memcpy(p,vcipher,sizeof(vcipher));
-    p[sizeof(vcipher)] = 0;
-    // string ;
-    strfff  =strfff +"--decoded--"+p  ; 
-    // aes.do_aes_decrypt(cipher, d64len, (byte *)code, key, 128, my_iv);
-    // base64_encode(code, (char *)cipher, aes.get_size() );
-    // strfff  =strfff +"--devcoded--"+ String(code)   ; 
-  
-  
-  
-  // String encMsg = aesLib.encrypt(msg, aeskey, aesiv);
-  // String s4 = msg+ "-" +encMsg;
-   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s"), strfff.c_str());
-  SettingsUpdateText(SET_MQTT_PWD, strfff.c_str());
-  // SettingsUpdateText(SET_MQTT_PWD, encMsg);
+  String EncryptedMsg = do_encrypt(msg, x_aes_key, x_aes_iv);
+  SettingsUpdateText(SET_MQTT_PWD, EncryptedMsg.c_str());
   AddLog_P2(LOG_LEVEL_INFO, PSTR(D_LOG_MQTT D_CMND_MQTTHOST " %s, " D_CMND_MQTTPORT " %d, " D_CMND_MQTTCLIENT " %s, " D_CMND_MQTTUSER " %s, " D_CMND_TOPIC " %s, " D_CMND_FULLTOPIC " %s"),
   SettingsText(SET_MQTT_HOST), Settings.mqtt_port, SettingsText(SET_MQTT_CLIENT), SettingsText(SET_MQTT_USER), SettingsText(SET_MQTT_TOPIC), SettingsText(SET_MQTT_FULLTOPIC));
 #endif
